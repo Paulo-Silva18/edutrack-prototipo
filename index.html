@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>EduTrack — Protótipo de Alta Fidelidade</title>
+
+<!--
+  EDUTRACK — PROTÓTIPO DE ALTA FIDELIDADE
+  TCD de Experiência do Usuário · IFTM Campus Patrocínio · 2026
+
+  Onde encontrar cada teoria aplicada (para a apresentação oral):
+
+  MEMORIZAÇÃO (reconhecimento > recordação)
+    - .navitem (rodapé fixo, mesmos 4 ícones em todas as telas)         -> ver <nav id="bottomnav">
+    - .timeline-dot + rótulo textual ao lado do ícone                   -> ver renderHistorico()
+    - .chip reaproveitado em 3 telas diferentes com o mesmo desenho     -> ver CSS ".chip"
+
+  PERCEPÇÃO / GESTALT
+    - Proximidade:  cards do dashboard agrupados, separados dos alertas -> #screen-dashboard
+    - Semelhança:   todos os .chip e .badge compartilham forma/raio     -> CSS
+    - Continuidade: linha vertical contínua do histórico                -> .timeline::before
+    - Fechamento:   ícones simplificados (svg, 24x24, mesmo traço)      -> ICONS{}
+    - Figura/fundo: vermelho (--alert) só existe em risco/falta         -> CSS variáveis
+    - Simetria/unidade: raio de borda e grid de 8px repetidos em tudo   -> CSS variáveis
+
+  COGNIÇÃO E ATENÇÃO
+    - Hierarquia: alertas aparecem ANTES dos cards de resumo            -> #screen-dashboard
+    - Carga mínima: só 3 campos obrigatórios no registro rápido         -> #screen-registro
+    - Feedback de fechamento de ciclo (toast) após salvar/enviar        -> function toast()
+    - Mensagem automática É editável (reduz ansiedade de perda de controle) -> #screen-notificar
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#F6F2EA;
+    --surface:#FFFFFF;
+    --ink:#28323A;
+    --muted:#6C7680;
+    --trust:#2F6B5E;
+    --trust-soft:#DCEAE3;
+    --trust-dark:#1F4F44;
+    --alert:#C0392B;
+    --alert-soft:#F7E2DE;
+    --alert-line:#E7C5BD;
+    --spark:#D98C2B;
+    --spark-soft:#FBEAD2;
+    --spark-dark:#9A5B12;
+    --line:#E7DFCC;
+    --radius:16px;
+    --radius-sm:11px;
+    --shadow: 0 1px 2px rgba(40,50,58,.05), 0 10px 28px rgba(40,50,58,.09);
+    --gap-grid: 8px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: radial-gradient(circle at 20% -10%, #fff 0%, var(--paper) 55%);
+    font-family:'Inter', system-ui, -apple-system, sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    display:flex; flex-direction:column; align-items:center;
+    padding: 32px 16px 56px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; animation:none !important; }
+  }
+  button{ font-family:inherit; }
+  button:focus-visible, .navitem:focus-visible, .chip:focus-visible, .tab:focus-visible, a:focus-visible{
+    outline:2px solid var(--trust); outline-offset:2px;
+  }
+
+  /* ---------- frame de contexto fora do app ---------- */
+  .lab-tag{
+    font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--trust-dark); background:var(--trust-soft); padding:6px 14px;
+    border-radius:999px; margin-bottom:18px;
+  }
+  .lab-caption{
+    max-width:420px; text-align:center; color:var(--muted); font-size:12.5px;
+    margin-top:18px; line-height:1.5;
+  }
+
+  /* ---------- shell do app (moldura de smartphone) ---------- */
+  .app-shell{
+    width:100%; max-width:412px; min-height:792px;
+    background:var(--surface); border-radius:30px;
+    box-shadow: var(--shadow); border:1px solid rgba(40,50,58,.06);
+    position:relative; overflow:hidden;
+    display:flex; flex-direction:column;
+  }
+  .topbar{
+    display:flex; align-items:center; gap:10px;
+    padding:22px 22px 14px; flex-shrink:0;
+  }
+  .topbar .back{
+    width:34px; height:34px; border-radius:50%; border:1.5px solid var(--line);
+    background:var(--surface); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; color:var(--ink); flex-shrink:0;
+  }
+  .topbar .back svg{ width:17px; height:17px; }
+  .topbar h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:21px; margin:0; flex:1;
+    letter-spacing:-.01em;
+  }
+  .topbar .sub{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+
+  .screen{ display:none; flex:1; overflow-y:auto; padding:2px 22px 110px; }
+  .screen.active{ display:flex; flex-direction:column; gap:16px; }
+
+  /* ---------- bottom nav ---------- */
+  #bottomnav{
+    position:absolute; left:0; right:0; bottom:0;
+    display:flex; background:var(--surface); border-top:1px solid var(--line);
+    padding:9px 6px calc(14px + env(safe-area-inset-bottom,0px));
+  }
+  .navitem{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:none; border:none; color:var(--muted); font-size:11px; font-weight:600;
+    cursor:pointer; padding:6px 0 2px; position:relative;
+  }
+  .navitem .navicon{
+    width:30px; height:30px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  }
+  .navitem.active{ color:var(--trust-dark); }
+  .navitem.active .navicon{ background:var(--trust-soft); }
+  .navitem svg{ width:19px; height:19px; }
+  .navitem .dot{
+    position:absolute; top:3px; right:calc(50% - 13px);
+    width:8px; height:8px; border-radius:50%; background:var(--alert);
+    border:1.5px solid var(--surface);
+  }
+
+  /* ---------- tipografia utilitária ---------- */
+  .eyebrow{ font-size:11.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); }
+  .greeting{ font-family:'Fraunces', serif; font-weight:600; font-size:25px; margin:0 0 2px; letter-spacing:-.01em; }
+  .muted{ color:var(--muted); font-size:13.5px; }
+  .small{ font-size:12.5px; }
+
+  /* ---------- cards ---------- */
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px; }
+  .card-grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .stat-card{ background:var(--paper); border-radius:var(--radius-sm); padding:12px 10px; text-align:center; }
+  .stat-card .n{ font-family:'Fraunces', serif; font-size:21px; font-weight:600; }
+  .stat-card .l{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+  .section-title{ font-size:13.5px; font-weight:700; color:var(--ink); margin:4px 0 -2px; display:flex; align-items:center; justify-content:space-between; }
+
+  /* ---------- alert (sticky-note: mesma gramática visual dos documentos do TCD) ---------- */
+  .alert-card{
+    background:var(--alert-soft); border:1px solid var(--alert-line); border-left:5px solid var(--alert);
+    border-radius:var(--radius-sm); padding:12px 14px; display:flex; gap:11px; align-items:flex-start;
+    cursor:pointer; text-align:left; width:100%; font-family:inherit; color:var(--ink);
+  }
+  .alert-card svg{ width:18px; height:18px; color:var(--alert); flex-shrink:0; margin-top:2px; }
+  .alert-card strong{ font-size:13.5px; display:block; }
+  .alert-card span{ font-size:12.5px; color:#7A3B30; }
+
+  /* ---------- chips / badges ---------- */
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:7px 13px; border-radius:999px;
+    font-size:13px; font-weight:700; border:1.5px solid transparent; font-family:inherit;
+  }
+  .chip.presente{ background:#E5F2EA; color:#1F7A45; border-color:#BFE3CC; }
+  .chip.falta{ background:var(--alert-soft); color:var(--alert); border-color:var(--alert-line); }
+  .chip.toggle{ cursor:pointer; user-select:none; }
+  .chip svg{ width:13px; height:13px; }
+
+  .badge{ font-size:10.5px; font-weight:800; padding:3px 10px; border-radius:999px; letter-spacing:.01em; }
+  .badge.risco{ background:var(--alert-soft); color:var(--alert); }
+  .badge.atencao{ background:var(--spark-soft); color:var(--spark-dark); }
+  .badge.ok{ background:var(--trust-soft); color:var(--trust-dark); }
+
+  /* ---------- botões ---------- */
+  .btn{
+    font-weight:700; font-size:14.5px; border-radius:13px; padding:13px 18px; border:none;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .btn svg{ width:16px; height:16px; }
+  .btn-primary{ background:var(--trust); color:#fff; }
+  .btn-primary:active{ background:var(--trust-dark); }
+  .btn-ghost{ background:var(--surface); color:var(--trust-dark); border:1.5px solid var(--trust-soft); }
+  .btn-danger-ghost{ background:var(--surface); color:var(--alert); border:1.5px solid var(--alert-line); }
+  .btn-block{ width:100%; }
+  .btn-row{ display:flex; gap:10px; }
+  .btn-row .btn{ flex:1; }
+
+  /* ---------- formulários ---------- */
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:12.5px; font-weight:700; color:var(--muted); }
+  .field input, .field textarea, .field select{
+    font-family:inherit; font-size:15px; padding:12px 14px; border-radius:var(--radius-sm);
+    border:1.5px solid var(--line); background:#FCFAF4; color:var(--ink); width:100%;
+  }
+  .field textarea{ resize:vertical; min-height:78px; line-height:1.4; }
+  .field input:focus, .field textarea:focus, .field select:focus{
+    outline:none; border-color:var(--trust); box-shadow:0 0 0 3px var(--trust-soft);
+  }
+  .field.error input{ border-color:var(--alert); }
+  .hint-error{ color:var(--alert); font-size:12px; display:none; margin-top:-2px; }
+  .field.error .hint-error{ display:block; }
+  .field .opt{ font-weight:400; color:var(--muted); }
+
+  /* ---------- segmented control / filtros ---------- */
+  .segmented{ display:flex; gap:4px; background:var(--paper); border-radius:999px; padding:4px; }
+  .segmented button{
+    flex:1; text-align:center; padding:8px 4px; border-radius:999px; font-size:12.5px; font-weight:700;
+    color:var(--muted); cursor:pointer; border:none; background:none;
+  }
+  .segmented button.active{ background:var(--surface); color:var(--trust-dark); box-shadow:var(--shadow); }
+
+  .filterbar{ display:flex; flex-direction:column; gap:8px; }
+  .filterbar .row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .filterbar select, .filterbar input[type="search"]{
+    font-family:inherit; font-size:13px; padding:9px 11px; border-radius:var(--radius-sm);
+    border:1.5px solid var(--line); background:var(--surface); color:var(--ink);
+  }
+
+  /* ---------- abas (perfil do aluno) ---------- */
+  .tabs{ display:flex; gap:4px; background:var(--paper); border-radius:999px; padding:4px; }
+  .tab{ flex:1; text-align:center; padding:9px 0; border-radius:999px; font-size:12.5px; font-weight:700;
+    color:var(--muted); cursor:pointer; }
+  .tab.active{ background:var(--surface); color:var(--trust-dark); box-shadow:var(--shadow); }
+
+  /* ---------- lista de alunos ---------- */
+  .aluno-row{
+    display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line);
+    border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; width:100%; text-align:left;
+    font-family:inherit; color:var(--ink);
+  }
+  .aluno-row:active{ background:var(--paper); }
+  .avatar{
+    width:42px; height:42px; border-radius:50%; background:var(--trust-soft); color:var(--trust-dark);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;
+    font-family:'Fraunces', serif; flex-shrink:0;
+  }
+  .avatar.lg{ width:58px; height:58px; font-size:19px; }
+  .aluno-info{ flex:1; min-width:0; }
+  .aluno-info .nome{ font-size:14px; font-weight:700; }
+  .aluno-info .meta{ font-size:12px; color:var(--muted); margin-top:1px; }
+
+  /* ---------- progresso (desempenho) ---------- */
+  .progress-row{ display:flex; flex-direction:column; gap:6px; }
+  .progress-row .lbl{ display:flex; justify-content:space-between; font-size:13px; }
+  .progress-row .lbl b{ font-weight:700; }
+  .progress-track{ height:9px; border-radius:999px; background:var(--paper); overflow:hidden; }
+  .progress-fill{ height:100%; border-radius:999px; background:var(--trust); transition:width .7s cubic-bezier(.4,0,.2,1); width:0; }
+
+  /* ---------- gráfico de barras (relatórios) ---------- */
+  .bar-row{ display:flex; align-items:center; gap:10px; }
+  .bar-label{ width:78px; font-size:12.5px; color:var(--muted); flex-shrink:0; }
+  .bar-track{ flex:1; height:14px; background:var(--paper); border-radius:999px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:999px; background:var(--trust); width:0; transition:width .7s cubic-bezier(.4,0,.2,1); }
+  .bar-value{ width:34px; text-align:right; font-size:12.5px; font-weight:800; flex-shrink:0; }
+
+  /* ---------- linha do tempo (histórico) ---------- */
+  .timeline{ position:relative; padding-left:30px; }
+  .timeline::before{ content:''; position:absolute; left:9px; top:4px; bottom:4px; width:2px; background:var(--line); }
+  .timeline-item{ position:relative; padding-bottom:20px; }
+  .timeline-item:last-child{ padding-bottom:0; }
+  .timeline-dot{
+    position:absolute; left:-30px; top:0; width:20px; height:20px; border-radius:50%;
+    background:var(--surface); border:2px solid var(--trust); display:flex; align-items:center; justify-content:center;
+  }
+  .timeline-dot.alerta{ border-color:var(--alert); color:var(--alert); }
+  .timeline-dot.nota{ border-color:var(--spark); color:var(--spark-dark); }
+  .timeline-dot.observacao{ border-color:var(--trust); color:var(--trust-dark); }
+  .timeline-dot.ano{ border-color:var(--muted); color:var(--muted); }
+  .timeline-dot svg{ width:11px; height:11px; }
+  .timeline-head{ display:flex; align-items:baseline; gap:8px; }
+  .timeline-head .lbl{ font-size:13px; font-weight:700; }
+  .timeline-head .data{ font-size:11.5px; color:var(--muted); }
+  .timeline-desc{ font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.45; }
+
+  /* ---------- toast (feedback de fechamento de ciclo) ---------- */
+  .toast{
+    position:absolute; left:50%; bottom:96px; transform:translate(-50%, 10px);
+    background:var(--ink); color:#fff; padding:12px 18px; border-radius:13px; font-size:13.5px;
+    font-weight:700; display:flex; align-items:center; gap:9px; opacity:0; pointer-events:none;
+    transition: opacity .22s ease, transform .22s ease; box-shadow:var(--shadow); z-index:80; max-width:88%;
+  }
+  .toast svg{ width:16px; height:16px; color:#8FD9AE; flex-shrink:0; }
+  .toast.show{ opacity:1; transform:translate(-50%, 0); }
+
+  /* ---------- login ---------- */
+  #screen-login{ justify-content:center; padding-top:40px; padding-bottom:40px; gap:26px; }
+  .brandmark{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:6px; }
+  .brandmark .icon{
+    width:52px; height:52px; border-radius:16px; background:var(--trust-soft); color:var(--trust-dark);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .brandmark .icon svg{ width:26px; height:26px; }
+  .brandmark .word{ font-family:'Fraunces', serif; font-weight:700; font-size:25px; letter-spacing:-.01em; }
+  .brandmark .tag{ color:var(--muted); font-size:13px; text-align:center; }
+  .login-form{ display:flex; flex-direction:column; gap:14px; }
+  .login-link{ text-align:center; font-size:13px; color:var(--trust-dark); font-weight:700; cursor:pointer; text-decoration:none; }
+
+  .empty-note{ text-align:center; color:var(--muted); font-size:13px; padding:18px 8px; }
+
+  ::-webkit-scrollbar{ width:0; height:0; }
+</style>
+</head>
+<body>
+
+<span class="lab-tag">Protótipo de alta fidelidade · EduTrack</span>
+
+<div class="app-shell" id="app">
+
+  <!-- ============ LOGIN ============ -->
+  <section class="screen active" id="screen-login">
+    <div class="brandmark">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 8.5 12 13l10-4.5L12 4Z"/><path d="M6 10.7V16c0 1 2.7 2.5 6 2.5s6-1.5 6-2.5v-5.3"/><path d="M21 8.5v5"/></svg>
+      </div>
+      <div class="word">EduTrack</div>
+      <div class="tag">Acompanhamento do desempenho dos alunos<br>num só lugar — mesmo sem internet estável.</div>
+    </div>
+    <form class="login-form" onsubmit="doLogin(event)">
+      <div class="field" id="field-email">
+        <label for="login-email">E-mail institucional</label>
+        <input type="email" id="login-email" placeholder="ana.lucia@escola.edu.br" autocomplete="username">
+        <div class="hint-error">Informe seu e-mail para continuar.</div>
+      </div>
+      <div class="field" id="field-senha">
+        <label for="login-senha">Senha</label>
+        <input type="password" id="login-senha" placeholder="••••••••" autocomplete="current-password">
+        <div class="hint-error">Informe sua senha para continuar.</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      <a class="login-link" onclick="toast('Link de recuperação enviado','check')">Esqueci minha senha</a>
+    </form>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section class="screen" id="screen-dashboard">
+    <div class="topbar" style="padding-bottom:0;">
+      <div style="flex:1;">
+        <div class="eyebrow">Hoje · 18 de junho</div>
+        <h1>Olá, Ana Lúcia</h1>
+      </div>
+      <div class="avatar">AL</div>
+    </div>
+
+    <div class="section-title">Precisam de atenção hoje</div>
+    <div id="dashboard-alertas" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+    <div class="section-title">Resumo da turma</div>
+    <div class="card-grid3" id="dashboard-stats"></div>
+
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div>
+        <div style="font-weight:700; font-size:13.5px;">Registro de hoje</div>
+        <div class="muted small">Frequência e notas da turma ainda não lançadas.</div>
+      </div>
+      <button class="btn btn-primary" onclick="showScreen('registro')">Registrar</button>
+    </div>
+  </section>
+
+  <!-- ============ LISTA DE ALUNOS ============ -->
+  <section class="screen" id="screen-alunos">
+    <div class="topbar">
+      <div>
+        <h1>Alunos</h1>
+        <div class="sub" id="alunos-contagem"></div>
+      </div>
+    </div>
+    <div class="filterbar">
+      <div class="segmented" id="filtro-turma">
+        <button class="active" data-turma="todas" onclick="setFiltroTurma('todas')">Todas</button>
+        <button data-turma="5º A" onclick="setFiltroTurma('5º A')">5º A</button>
+        <button data-turma="5º B" onclick="setFiltroTurma('5º B')">5º B</button>
+      </div>
+      <div class="row2">
+        <select id="filtro-status" onchange="renderListaAlunos()">
+          <option value="todos">Todos os status</option>
+          <option value="risco">Risco</option>
+          <option value="atencao">Atenção</option>
+          <option value="ok">Em dia</option>
+        </select>
+        <select id="filtro-ordem" onchange="renderListaAlunos()">
+          <option value="nome">Ordenar: nome</option>
+          <option value="media">Ordenar: média</option>
+          <option value="faltas">Ordenar: faltas</option>
+        </select>
+      </div>
+      <input type="search" id="filtro-busca" placeholder="Buscar aluno pelo nome" oninput="renderListaAlunos()">
+    </div>
+    <div id="lista-alunos" style="display:flex; flex-direction:column; gap:8px;"></div>
+  </section>
+
+  <!-- ============ PERFIL DO ALUNO ============ -->
+  <section class="screen" id="screen-perfil">
+    <div class="topbar">
+      <button class="back" onclick="showScreen('alunos')" aria-label="Voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <h1 id="perfil-titulo">Aluno</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div class="avatar lg" id="perfil-avatar">--</div>
+      <div>
+        <div style="font-weight:700; font-size:16px;" id="perfil-nome">—</div>
+        <div class="muted small" id="perfil-turma">—</div>
+        <span class="badge" id="perfil-badge" style="margin-top:4px; display:inline-block;">—</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-tab="visao" onclick="trocarTab('visao')">Visão geral</div>
+      <div class="tab" data-tab="desempenho" onclick="trocarTab('desempenho')">Desempenho</div>
+      <div class="tab" data-tab="historico" onclick="trocarTab('historico')">Histórico</div>
+    </div>
+    <div id="perfil-conteudo"></div>
+    <div class="btn-row" style="margin-top:auto; padding-top:6px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="toast('Observação adicionada ao registro','check')">Registrar observação</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="abrirNotificar('aluno')">Notificar pais</button>
+    </div>
+  </section>
+
+  <!-- ============ REGISTRO RÁPIDO ============ -->
+  <section class="screen" id="screen-registro">
+    <div class="topbar">
+      <button class="back" onclick="showScreen('dashboard')" aria-label="Voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div>
+        <h1>Registro rápido</h1>
+        <div class="sub">Hoje · 18 de junho</div>
+      </div>
+    </div>
+
+    <div class="segmented" id="registro-turma">
+      <button class="active" data-turma="5º A" onclick="setRegistroTurma('5º A')">5º A</button>
+      <button data-turma="5º B" onclick="setRegistroTurma('5º B')">5º B</button>
+    </div>
+
+    <div class="section-title">Frequência <span class="muted small" style="font-weight:400;">toque para alternar</span></div>
+    <div id="registro-chips" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+    <div class="field">
+      <label>Nota da atividade do dia <span class="opt">(opcional)</span></label>
+      <input type="number" id="registro-nota" placeholder="Ex.: 8,5" min="0" max="10" step="0.1">
+    </div>
+    <div class="field">
+      <label>Observação <span class="opt">(opcional)</span></label>
+      <textarea id="registro-obs" placeholder="Alguma observação sobre a turma ou um aluno em específico..."></textarea>
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="salvarRegistro()">Salvar registro</button>
+  </section>
+
+  <!-- ============ RELATÓRIOS ============ -->
+  <section class="screen" id="screen-relatorios">
+    <div class="topbar">
+      <h1>Relatórios</h1>
+    </div>
+    <div class="segmented" id="relatorio-periodo">
+      <button class="active" data-periodo="1" onclick="setPeriodo(1)">1º Bim.</button>
+      <button data-periodo="2" onclick="setPeriodo(2)">2º Bim.</button>
+      <button data-periodo="3" onclick="setPeriodo(3)">3º Bim.</button>
+      <button data-periodo="4" onclick="setPeriodo(4)">4º Bim.</button>
+    </div>
+    <div class="card">
+      <div class="section-title" style="margin-bottom:10px;">Média da turma 5º A por disciplina</div>
+      <div class="barchart" id="relatorio-chart" style="display:flex; flex-direction:column; gap:12px;"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" style="flex:1;" onclick="toast('Relatório exportado em PDF','check')">Exportar PDF</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="toast('Relatório exportado em CSV','check')">Exportar CSV</button>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="abrirNotificar('turma')">Enviar boletim aos pais</button>
+  </section>
+
+  <!-- ============ NOTIFICAR PAIS ============ -->
+  <section class="screen" id="screen-notificar">
+    <div class="topbar">
+      <button class="back" onclick="voltarDeNotificar()" aria-label="Voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <h1>Notificar pais</h1>
+    </div>
+    <div class="card small muted" id="notificar-contexto"></div>
+    <div class="field">
+      <label>Mensagem <span class="opt">(gerada automaticamente — você pode editar)</span></label>
+      <textarea id="notificar-texto" rows="6"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-danger-ghost" style="flex:1;" onclick="voltarDeNotificar()">Cancelar</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="enviarNotificacao()">Enviar</button>
+    </div>
+  </section>
+
+  <!-- ============ NAV INFERIOR ============ -->
+  <nav id="bottomnav" style="display:none;">
+    <button class="navitem active" data-nav="dashboard" onclick="showScreen('dashboard')">
+      <span class="navicon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9.5h14V10"/></svg>
+      </span>
+      Início
+      <span class="dot" id="nav-dot"></span>
+    </button>
+    <button class="navitem" data-nav="alunos" onclick="showScreen('alunos')">
+      <span class="navicon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M15.5 19c.2-2 1.7-3.6 3.7-3.9"/></svg>
+      </span>
+      Alunos
+    </button>
+    <button class="navitem" data-nav="registro" onclick="showScreen('registro')">
+      <span class="navicon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>
+      </span>
+      Registrar
+    </button>
+    <button class="navitem" data-nav="relatorios" onclick="showScreen('relatorios')">
+      <span class="navicon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M11 20V4M18 20v-7"/></svg>
+      </span>
+      Relatórios
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"><svg id="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg><span id="toast-msg"></span></div>
+</div>
+
+<p class="lab-caption">EduTrack — protótipo de alta fidelidade · TCD de Experiência do Usuário · IFTM Campus Patrocínio, 2026.<br>Dados de alunos fictícios, usados apenas para demonstração.</p>
+
+<script>
+/* ============================ ÍCONES (mesmo traço, 24x24 — Gestalt: semelhança) ============================ */
+const ICONS = {
+  alerta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.7 17a1.8 1.8 0 0 0 1.6 2.7h15.4a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/></svg>',
+  nota: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16l-4.8 2.4.9-5.4-3.9-3.8 5.4-.8L12 3.5Z"/></svg>',
+  observacao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v11H8l-3 3V5Z"/><path d="M8.5 9h7M8.5 12h4.5"/></svg>',
+  ano: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h13l-2.5 4L18 12H5"/></svg>',
+};
+
+/* ============================ DADOS (mock — front-end apenas) ============================ */
+const ALUNOS = [
+  { id:1, nome:'Carlos Eduardo Silva', turma:'5º A', media:6.2, faltas:7, status:'risco',
+    desempenho:[{d:'Português',p:58},{d:'Matemática',p:64},{d:'Ciências',p:71},{d:'História',p:66}],
+    historico:[
+      {tipo:'alerta', label:'Alerta automático', data:'12/06', desc:'Queda de desempenho em Matemática identificada pelo sistema.'},
+      {tipo:'observacao', label:'Observação', data:'05/06', desc:'Dificuldade de concentração relatada em sala de aula.'},
+      {tipo:'nota', label:'Nota lançada', data:'28/05', desc:'Avaliação de Português: 5,8.'},
+      {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
+    ]},
+  { id:2, nome:'Beatriz Almeida Rocha', turma:'5º A', media:8.7, faltas:1, status:'ok',
+    desempenho:[{d:'Português',p:88},{d:'Matemática',p:84},{d:'Ciências',p:91},{d:'História',p:86}],
+    historico:[
+      {tipo:'nota', label:'Nota lançada', data:'28/05', desc:'Avaliação de Português: 9,1.'},
+      {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
+    ]},
+  { id:3, nome:'João Pedro Santos', turma:'5º B', media:7.0, faltas:4, status:'atencao',
+    desempenho:[{d:'Português',p:69},{d:'Matemática',p:73},{d:'Ciências',p:70},{d:'História',p:75}],
+    historico:[
+      {tipo:'observacao', label:'Observação', data:'02/06', desc:'Melhorou a participação em sala após reforço.'},
+      {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano B.'},
+    ]},
+  { id:4, nome:'Maria Clara Souza Lima', turma:'5º A', media:5.9, faltas:9, status:'risco',
+    desempenho:[{d:'Português',p:55},{d:'Matemática',p:60},{d:'Ciências',p:62},{d:'História',p:58}],
+    historico:[
+      {tipo:'alerta', label:'Alerta automático', data:'14/06', desc:'Frequência abaixo de 75% no bimestre.'},
+      {tipo:'nota', label:'Nota lançada', data:'29/05', desc:'Avaliação de Matemática: 5,5.'},
+      {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
+    ]},
+  { id:5, nome:'Lucas Henrique Lima', turma:'5º B', media:8.1, faltas:2, status:'ok',
+    desempenho:[{d:'Português',p:80},{d:'Matemática',p:85},{d:'Ciências',p:79},{d:'História',p:82}],
+    historico:[ {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano B.'} ]},
+  { id:6, nome:'Ana Beatriz Costa', turma:'5º A', media:6.8, faltas:5, status:'atencao',
+    desempenho:[{d:'Português',p:67},{d:'Matemática',p:71},{d:'Ciências',p:69},{d:'História',p:73}],
+    historico:[
+      {tipo:'observacao', label:'Observação', data:'30/05', desc:'Dificuldade pontual identificada em interpretação de texto.'},
+      {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
+    ]},
+];
+
+const RELATORIO_DADOS = { 1:[58,64,71,66], 2:[62,67,73,70], 3:[66,70,75,74], 4:[69,73,78,77] };
+const DISCIPLINAS = ['Português','Matemática','Ciências','História'];
+
+/* ============================ ESTADO ============================ */
+let state = {
+  filtroTurma: 'todas',
+  registroTurma: '5º A',
+  registroFreq: {},   // { alunoId: true(presente) | false(falta) }
+  alunoAtual: null,
+  tabAtual: 'visao',
+  periodo: 1,
+  notifContext: 'aluno', // 'aluno' | 'turma'
+  notifVoltarPara: 'dashboard',
+};
+ALUNOS.forEach(a => state.registroFreq[a.id] = true);
+
+/* ============================ NAVEGAÇÃO ============================ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.getElementById('screen-' + id).scrollTop = 0;
+  document.querySelectorAll('.navitem').forEach(n => n.classList.toggle('active', n.dataset.nav === id));
+  document.getElementById('bottomnav').style.display = (id === 'login') ? 'none' : 'flex';
+
+  if(id === 'dashboard') renderDashboard();
+  if(id === 'alunos') renderListaAlunos();
+  if(id === 'registro') renderRegistro();
+  if(id === 'relatorios') renderRelatorios();
+}
+
+function doLogin(e){
+  e.preventDefault();
+  const email = document.getElementById('login-email');
+  const senha = document.getElementById('login-senha');
+  let ok = true;
+  document.getElementById('field-email').classList.toggle('error', !email.value.trim());
+  document.getElementById('field-senha').classList.toggle('error', !senha.value.trim());
+  if(!email.value.trim() || !senha.value.trim()) return;
+  showScreen('dashboard');
+}
+
+/* ============================ DASHBOARD ============================ */
+function renderDashboard(){
+  const risco = ALUNOS.filter(a => a.status === 'risco');
+  const alertasBox = document.getElementById('dashboard-alertas');
+  document.getElementById('nav-dot').style.display = risco.length ? 'block' : 'none';
+
+  alertasBox.innerHTML = risco.map(a => `
+    <button class="alert-card" onclick="abrirPerfil(${a.id})">
+      ${ICONS.alerta}
+      <span>
+        <strong>${a.nome}</strong>
+        <span>Média ${a.media.toFixed(1)} · ${a.faltas} faltas no bimestre</span>
+      </span>
+    </button>
+  `).join('') || `<div class="empty-note">Nenhum aluno em risco hoje. Bom trabalho! 🌱</div>`;
+
+  const media = (ALUNOS.reduce((s,a)=>s+a.media,0)/ALUNOS.length).toFixed(1);
+  document.getElementById('dashboard-stats').innerHTML = `
+    <div class="stat-card"><div class="n">${ALUNOS.length}</div><div class="l">Alunos</div></div>
+    <div class="stat-card"><div class="n">${media}</div><div class="l">Média geral</div></div>
+    <div class="stat-card"><div class="n">${risco.length}</div><div class="l">Em risco</div></div>
+  `;
+}
+
+/* ============================ LISTA DE ALUNOS ============================ */
+function setFiltroTurma(t){
+  state.filtroTurma = t;
+  document.querySelectorAll('#filtro-turma button').forEach(b => b.classList.toggle('active', b.dataset.turma === t));
+  renderListaAlunos();
+}
+
+function renderListaAlunos(){
+  const status = document.getElementById('filtro-status').value;
+  const ordem = document.getElementById('filtro-ordem').value;
+  const busca = document.getElementById('filtro-busca').value.trim().toLowerCase();
+
+  let lista = ALUNOS.filter(a =>
+    (state.filtroTurma === 'todas' || a.turma === state.filtroTurma) &&
+    (status === 'todos' || a.status === status) &&
+    (busca === '' || a.nome.toLowerCase().includes(busca))
+  );
+  if(ordem === 'nome') lista.sort((a,b) => a.nome.localeCompare(b.nome));
+  if(ordem === 'media') lista.sort((a,b) => a.media - b.media);
+  if(ordem === 'faltas') lista.sort((a,b) => b.faltas - a.faltas);
+
+  document.getElementById('alunos-contagem').textContent = `${lista.length} de ${ALUNOS.length} alunos`;
+
+  const badgeLabel = { risco:'Risco', atencao:'Atenção', ok:'Em dia' };
+  document.getElementById('lista-alunos').innerHTML = lista.map(a => `
+    <button class="aluno-row" onclick="abrirPerfil(${a.id})">
+      <div class="avatar">${iniciais(a.nome)}</div>
+      <div class="aluno-info">
+        <div class="nome">${a.nome}</div>
+        <div class="meta">${a.turma} · média ${a.media.toFixed(1)} · ${a.faltas} faltas</div>
+      </div>
+      <span class="badge ${a.status}">${badgeLabel[a.status]}</span>
+    </button>
+  `).join('') || `<div class="empty-note">Nenhum aluno encontrado com esses filtros.</div>`;
+}
+
+function iniciais(nome){
+  const partes = nome.split(' ');
+  return (partes[0][0] + (partes[1] ? partes[1][0] : '')).toUpperCase();
+}
+
+/* ============================ PERFIL DO ALUNO ============================ */
+function abrirPerfil(id){
+  state.alunoAtual = id;
+  state.tabAtual = 'visao';
+  document.querySelectorAll('#screen-perfil .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'visao'));
+  renderPerfil();
+  showScreen('perfil');
+}
+
+function trocarTab(tab){
+  state.tabAtual = tab;
+  document.querySelectorAll('#screen-perfil .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderPerfilConteudo();
+}
+
+function renderPerfil(){
+  const a = ALUNOS.find(x => x.id === state.alunoAtual);
+  const badgeLabel = { risco:'Risco', atencao:'Atenção', ok:'Em dia' };
+  document.getElementById('perfil-titulo').textContent = 'Perfil do aluno';
+  document.getElementById('perfil-avatar').textContent = iniciais(a.nome);
+  document.getElementById('perfil-nome').textContent = a.nome;
+  document.getElementById('perfil-turma').textContent = a.turma;
+  document.getElementById('perfil-badge').className = 'badge ' + a.status;
+  document.getElementById('perfil-badge').textContent = badgeLabel[a.status];
+  renderPerfilConteudo();
+}
+
+function renderPerfilConteudo(){
+  const a = ALUNOS.find(x => x.id === state.alunoAtual);
+  const box = document.getElementById('perfil-conteudo');
+
+  if(state.tabAtual === 'visao'){
+    box.innerHTML = `
+      <div class="card-grid3">
+        <div class="stat-card"><div class="n">${a.media.toFixed(1)}</div><div class="l">Média</div></div>
+        <div class="stat-card"><div class="n">${a.faltas}</div><div class="l">Faltas</div></div>
+        <div class="stat-card"><div class="n">${a.historico.length}</div><div class="l">Registros</div></div>
+      </div>
+      <div class="card small" style="margin-top:12px;">
+        <div style="font-weight:700; font-size:13px; margin-bottom:4px;">Último evento</div>
+        <div class="muted">${a.historico[0] ? a.historico[0].desc : 'Sem registros recentes.'}</div>
+      </div>`;
+  }
+  if(state.tabAtual === 'desempenho'){
+    box.innerHTML = a.desempenho.map(d => `
+      <div class="progress-row" style="margin-bottom:14px;">
+        <div class="lbl"><span>${d.d}</span><b>${d.p}%</b></div>
+        <div class="progress-track"><div class="progress-fill" style="width:0" data-w="${d.p}"></div></div>
+      </div>`).join('');
+    requestAnimationFrame(() => {
+      box.querySelectorAll('.progress-fill').forEach(el => el.style.width = el.dataset.w + '%');
+    });
+  }
+  if(state.tabAtual === 'historico'){
+    box.innerHTML = `<div class="timeline">` + a.historico.map(h => `
+      <div class="timeline-item">
+        <div class="timeline-dot ${h.tipo}">${ICONS[h.tipo]}</div>
+        <div class="timeline-head"><span class="lbl">${h.label}</span><span class="data">${h.data}</span></div>
+        <div class="timeline-desc">${h.desc}</div>
+      </div>`).join('') + `</div>`;
+  }
+}
+
+/* ============================ REGISTRO RÁPIDO ============================ */
+function setRegistroTurma(t){
+  state.registroTurma = t;
+  document.querySelectorAll('#registro-turma button').forEach(b => b.classList.toggle('active', b.dataset.turma === t));
+  renderRegistroChips();
+}
+
+function renderRegistro(){
+  document.getElementById('registro-nota').value = '';
+  document.getElementById('registro-obs').value = '';
+  renderRegistroChips();
+}
+
+function renderRegistroChips(){
+  const lista = ALUNOS.filter(a => a.turma === state.registroTurma);
+  document.getElementById('registro-chips').innerHTML = lista.map(a => {
+    const presente = state.registroFreq[a.id];
+    return `
+      <div class="aluno-row" style="cursor:default;">
+        <div class="avatar">${iniciais(a.nome)}</div>
+        <div class="aluno-info"><div class="nome">${a.nome}</div></div>
+        <div class="chip toggle ${presente ? 'presente' : 'falta'}" tabindex="0" role="button"
+             onclick="toggleFreq(${a.id})" onkeydown="if(event.key==='Enter')toggleFreq(${a.id})">
+          ${presente ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg> Presente' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg> Falta'}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleFreq(id){
+  state.registroFreq[id] = !state.registroFreq[id];
+  renderRegistroChips();
+}
+
+function salvarRegistro(){
+  toast('Registro salvo com sucesso', 'check');
+  setTimeout(() => showScreen('dashboard'), 950);
+}
+
+/* ============================ RELATÓRIOS ============================ */
+function setPeriodo(p){
+  state.periodo = p;
+  document.querySelectorAll('#relatorio-periodo button').forEach(b => b.classList.toggle('active', Number(b.dataset.periodo) === p));
+  renderRelatorios();
+}
+
+function renderRelatorios(){
+  const dados = RELATORIO_DADOS[state.periodo];
+  document.getElementById('relatorio-chart').innerHTML = DISCIPLINAS.map((d,i) => `
+    <div class="bar-row">
+      <div class="bar-label">${d}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:0" data-w="${dados[i]}"></div></div>
+      <div class="bar-value">${dados[i]}%</div>
+    </div>`).join('');
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.bar-fill').forEach(el => el.style.width = el.dataset.w + '%');
+  });
+}
+
+/* ============================ NOTIFICAR PAIS ============================ */
+function abrirNotificar(contexto){
+  state.notifContext = contexto;
+  state.notifVoltarPara = (contexto === 'aluno') ? 'perfil' : 'relatorios';
+  const texto = document.getElementById('notificar-texto');
+  const ctx = document.getElementById('notificar-contexto');
+
+  if(contexto === 'aluno'){
+    const a = ALUNOS.find(x => x.id === state.alunoAtual);
+    ctx.textContent = `Destinatário: responsáveis de ${a.nome} (${a.turma})`;
+    texto.value = `Olá! Gostaríamos de conversar sobre o desempenho de ${a.nome.split(' ')[0]} nas últimas semanas. A média atual é ${a.media.toFixed(1)} e identificamos um ponto de atenção que pode ser resolvido com um pouco de apoio em casa. Podemos agendar uma breve conversa?`;
+  } else {
+    ctx.textContent = `Destinatário: responsáveis de todos os alunos da turma 5º A — fechamento do ${state.periodo}º bimestre`;
+    texto.value = `Olá! O boletim do ${state.periodo}º bimestre da turma 5º A já está disponível. Em anexo você encontra o desempenho por disciplina. Qualquer dúvida, estamos à disposição.`;
+  }
+  showScreen('notificar');
+}
+
+function voltarDeNotificar(){
+  showScreen(state.notifVoltarPara);
+}
+
+function enviarNotificacao(){
+  toast('Notificação enviada aos pais', 'check');
+  setTimeout(() => showScreen(state.notifVoltarPara), 950);
+}
+
+/* ============================ TOAST (fecha o ciclo de feedback) ============================ */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  document.getElementById('toast-msg').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2300);
+}
+</script>
+</body>
+</html>
