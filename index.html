@@ -302,6 +302,59 @@
 
   .empty-note{ text-align:center; color:var(--muted); font-size:13px; padding:18px 8px; }
 
+  /* ---------- apresentação (onboarding) ---------- */
+  #screen-apresentacao{ padding-top:6px; }
+  .apresent-hero{ text-align:center; padding:10px 4px 4px; }
+  .apresent-hero .icon{
+    width:56px; height:56px; border-radius:18px; background:var(--trust-soft); color:var(--trust-dark);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+  }
+  .apresent-hero .icon svg{ width:28px; height:28px; }
+  .apresent-hero h1{ font-family:'Fraunces', serif; font-weight:600; font-size:24px; margin:0 0 8px; letter-spacing:-.01em; }
+  .apresent-hero p{ color:var(--muted); font-size:14px; line-height:1.55; margin:0 auto; max-width:300px; }
+
+  .apresent-list{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+  .apresent-item{
+    display:flex; align-items:flex-start; gap:13px; padding:14px; border:1px solid var(--line);
+    border-radius:var(--radius); background:var(--surface);
+  }
+  .apresent-item .ai-icon{
+    width:40px; height:40px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  }
+  .apresent-item .ai-icon svg{ width:20px; height:20px; }
+  .apresent-item .ai-text strong{ font-size:14px; display:block; margin-bottom:2px; }
+  .apresent-item .ai-text span{ font-size:12.5px; color:var(--muted); line-height:1.4; display:block; }
+  .apresent-item.i-inicio .ai-icon{ background:var(--trust-soft); color:var(--trust-dark); }
+  .apresent-item.i-alunos .ai-icon{ background:var(--spark-soft); color:var(--spark-dark); }
+  .apresent-item.i-registrar .ai-icon{ background:#E9E4F5; color:#5B3FA8; }
+  .apresent-item.i-relatorios .ai-icon{ background:var(--alert-soft); color:var(--alert); }
+
+  .apresent-footer{ margin-top:auto; padding-top:18px; display:flex; flex-direction:column; gap:10px; }
+  .apresent-skip{ text-align:center; font-size:12.5px; color:var(--muted); font-weight:600; cursor:pointer; background:none; border:none; font-family:inherit; padding:4px; }
+
+  /* ---------- card de recomendação (perfil do aluno) ---------- */
+  .reco-card{
+    background:var(--spark-soft); border:1px solid #ECD3A4; border-left:5px solid var(--spark);
+    border-radius:var(--radius-sm); padding:13px 14px;
+  }
+  .reco-card .reco-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .reco-card .reco-head svg{ width:16px; height:16px; color:var(--spark-dark); flex-shrink:0; }
+  .reco-card .reco-head strong{ font-size:13px; color:var(--spark-dark); }
+  .reco-card textarea{
+    font-family:inherit; font-size:13.5px; line-height:1.45; width:100%; min-height:64px; resize:vertical;
+    border:1.5px solid #ECD3A4; border-radius:9px; padding:10px 11px; background:#FFFDF8; color:var(--ink);
+  }
+  .reco-card textarea:focus{ outline:none; border-color:var(--spark); box-shadow:0 0 0 3px var(--spark-soft); }
+  .reco-card .reco-empty{ font-size:12.5px; color:#9A7B45; font-style:italic; margin-bottom:8px; }
+  .reco-card .reco-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+  .reco-card .reco-btn{
+    font-size:12.5px; font-weight:700; border:none; background:none; cursor:pointer; font-family:inherit;
+    padding:6px 10px; border-radius:8px; color:var(--spark-dark);
+  }
+  .reco-card .reco-btn.save{ background:var(--spark); color:#fff; }
+  .reco-card .reco-saved{ font-size:12px; color:var(--spark-dark); font-weight:600; display:flex; align-items:center; gap:5px; }
+  .reco-card .reco-saved svg{ width:13px; height:13px; }
+
   ::-webkit-scrollbar{ width:0; height:0; }
 </style>
 </head>
@@ -336,6 +389,61 @@
     </form>
   </section>
 
+  <!-- ============ APRESENTAÇÃO (ONBOARDING) ============ -->
+  <section class="screen" id="screen-apresentacao">
+    <div class="apresent-hero">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 8.5 12 13l10-4.5L12 4Z"/><path d="M6 10.7V16c0 1 2.7 2.5 6 2.5s6-1.5 6-2.5v-5.3"/><path d="M21 8.5v5"/></svg>
+      </div>
+      <h1>Bem-vinda ao EduTrack</h1>
+      <p>Tudo que você precisa para acompanhar seus alunos, em um só lugar — mesmo sem internet estável. Veja o que cada área faz:</p>
+    </div>
+
+    <div class="apresent-list">
+      <div class="apresent-item i-inicio">
+        <div class="ai-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v9.5h14V10"/></svg>
+        </div>
+        <div class="ai-text">
+          <strong>Início</strong>
+          <span>Mostra primeiro quem precisa de atenção hoje, e só depois o resumo geral da turma.</span>
+        </div>
+      </div>
+      <div class="apresent-item i-alunos">
+        <div class="ai-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M15.5 19c.2-2 1.7-3.6 3.7-3.9"/></svg>
+        </div>
+        <div class="ai-text">
+          <strong>Alunos</strong>
+          <span>Lista completa da turma, com busca, filtros e o histórico de cada aluno desde anos anteriores.</span>
+        </div>
+      </div>
+      <div class="apresent-item i-registrar">
+        <div class="ai-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11l3 3v13H5z"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>
+        </div>
+        <div class="ai-text">
+          <strong>Registrar</strong>
+          <span>Frequência e nota do dia em poucos toques, mesmo pelo celular e sem internet.</span>
+        </div>
+      </div>
+      <div class="apresent-item i-relatorios">
+        <div class="ai-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M11 20V4M18 20v-7"/></svg>
+        </div>
+        <div class="ai-text">
+          <strong>Relatórios</strong>
+          <span>Boletim por bimestre, pronto para exportar ou enviar direto para os pais.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="apresent-footer">
+      <button class="btn btn-primary btn-block" onclick="concluirApresentacao()">Começar a usar</button>
+      <button class="apresent-skip" onclick="concluirApresentacao()">Pular apresentação</button>
+    </div>
+  </section>
+
   <!-- ============ DASHBOARD ============ -->
   <section class="screen" id="screen-dashboard">
     <div class="topbar" style="padding-bottom:0;">
@@ -343,6 +451,9 @@
         <div class="eyebrow">Hoje · 18 de junho</div>
         <h1>Olá, Ana Lúcia</h1>
       </div>
+      <button class="back" onclick="showScreen('apresentacao')" aria-label="Sobre o EduTrack" title="Sobre o EduTrack" style="margin-right:4px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4.5M12 8h.01"/></svg>
+      </button>
       <div class="avatar">AL</div>
     </div>
 
@@ -540,6 +651,7 @@ const ICONS = {
 /* ============================ DADOS (mock — front-end apenas) ============================ */
 const ALUNOS = [
   { id:1, nome:'Carlos Eduardo Silva', turma:'5º A', media:6.2, faltas:7, status:'risco',
+    recomendacao:'Responde melhor quando o conteúdo é lido em voz alta antes da atividade escrita. Sugiro manter esse apoio no início do próximo ano.',
     desempenho:[{d:'Português',p:58},{d:'Matemática',p:64},{d:'Ciências',p:71},{d:'História',p:66}],
     historico:[
       {tipo:'alerta', label:'Alerta automático', data:'12/06', desc:'Queda de desempenho em Matemática identificada pelo sistema.'},
@@ -548,18 +660,21 @@ const ALUNOS = [
       {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
     ]},
   { id:2, nome:'Beatriz Almeida Rocha', turma:'5º A', media:8.7, faltas:1, status:'ok',
+    recomendacao:'',
     desempenho:[{d:'Português',p:88},{d:'Matemática',p:84},{d:'Ciências',p:91},{d:'História',p:86}],
     historico:[
       {tipo:'nota', label:'Nota lançada', data:'28/05', desc:'Avaliação de Português: 9,1.'},
       {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
     ]},
   { id:3, nome:'João Pedro Santos', turma:'5º B', media:7.0, faltas:4, status:'atencao',
+    recomendacao:'Melhorou bastante a participação depois do reforço individual às terças. Vale continuar com pequenos desafios em voz alta para reforçar a confiança.',
     desempenho:[{d:'Português',p:69},{d:'Matemática',p:73},{d:'Ciências',p:70},{d:'História',p:75}],
     historico:[
       {tipo:'observacao', label:'Observação', data:'02/06', desc:'Melhorou a participação em sala após reforço.'},
       {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano B.'},
     ]},
   { id:4, nome:'Maria Clara Souza Lima', turma:'5º A', media:5.9, faltas:9, status:'risco',
+    recomendacao:'A família tem dificuldade de acompanhar os estudos em casa. Recomendo iniciar o ano já com uma conversa direta com os responsáveis.',
     desempenho:[{d:'Português',p:55},{d:'Matemática',p:60},{d:'Ciências',p:62},{d:'História',p:58}],
     historico:[
       {tipo:'alerta', label:'Alerta automático', data:'14/06', desc:'Frequência abaixo de 75% no bimestre.'},
@@ -567,9 +682,11 @@ const ALUNOS = [
       {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano A.'},
     ]},
   { id:5, nome:'Lucas Henrique Lima', turma:'5º B', media:8.1, faltas:2, status:'ok',
+    recomendacao:'',
     desempenho:[{d:'Português',p:80},{d:'Matemática',p:85},{d:'Ciências',p:79},{d:'História',p:82}],
     historico:[ {tipo:'ano', label:'Início de ano', data:'10/02', desc:'Matrícula confirmada no 5º ano B.'} ]},
   { id:6, nome:'Ana Beatriz Costa', turma:'5º A', media:6.8, faltas:5, status:'atencao',
+    recomendacao:'',
     desempenho:[{d:'Português',p:67},{d:'Matemática',p:71},{d:'Ciências',p:69},{d:'História',p:73}],
     historico:[
       {tipo:'observacao', label:'Observação', data:'30/05', desc:'Dificuldade pontual identificada em interpretação de texto.'},
@@ -590,6 +707,8 @@ let state = {
   periodo: 1,
   notifContext: 'aluno', // 'aluno' | 'turma'
   notifVoltarPara: 'dashboard',
+  apresentacaoVista: false,
+  editandoReco: false,
 };
 ALUNOS.forEach(a => state.registroFreq[a.id] = true);
 
@@ -599,7 +718,7 @@ function showScreen(id){
   document.getElementById('screen-' + id).classList.add('active');
   document.getElementById('screen-' + id).scrollTop = 0;
   document.querySelectorAll('.navitem').forEach(n => n.classList.toggle('active', n.dataset.nav === id));
-  document.getElementById('bottomnav').style.display = (id === 'login') ? 'none' : 'flex';
+  document.getElementById('bottomnav').style.display = (id === 'login' || id === 'apresentacao') ? 'none' : 'flex';
 
   if(id === 'dashboard') renderDashboard();
   if(id === 'alunos') renderListaAlunos();
@@ -615,6 +734,11 @@ function doLogin(e){
   document.getElementById('field-email').classList.toggle('error', !email.value.trim());
   document.getElementById('field-senha').classList.toggle('error', !senha.value.trim());
   if(!email.value.trim() || !senha.value.trim()) return;
+  showScreen(state.apresentacaoVista ? 'dashboard' : 'apresentacao');
+}
+
+function concluirApresentacao(){
+  state.apresentacaoVista = true;
   showScreen('dashboard');
 }
 
@@ -687,6 +811,7 @@ function iniciais(nome){
 function abrirPerfil(id){
   state.alunoAtual = id;
   state.tabAtual = 'visao';
+  state.editandoReco = false;
   document.querySelectorAll('#screen-perfil .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'visao'));
   renderPerfil();
   showScreen('perfil');
@@ -694,6 +819,7 @@ function abrirPerfil(id){
 
 function trocarTab(tab){
   state.tabAtual = tab;
+  state.editandoReco = false;
   document.querySelectorAll('#screen-perfil .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   renderPerfilConteudo();
 }
@@ -724,6 +850,9 @@ function renderPerfilConteudo(){
       <div class="card small" style="margin-top:12px;">
         <div style="font-weight:700; font-size:13px; margin-bottom:4px;">Último evento</div>
         <div class="muted">${a.historico[0] ? a.historico[0].desc : 'Sem registros recentes.'}</div>
+      </div>
+      <div class="reco-card" style="margin-top:12px;" id="reco-card">
+        ${renderRecoConteudo(a)}
       </div>`;
   }
   if(state.tabAtual === 'desempenho'){
@@ -744,6 +873,62 @@ function renderPerfilConteudo(){
         <div class="timeline-desc">${h.desc}</div>
       </div>`).join('') + `</div>`;
   }
+}
+
+/* ============================ RECOMENDAÇÃO PARA OS PRÓXIMOS PROFESSORES ============================ */
+function renderRecoConteudo(a){
+  const head = `
+    <div class="reco-head">
+      ${ICONS.observacao.replace('<svg ', '<svg style="color:inherit" ')}
+      <strong>Recomendação para os próximos professores</strong>
+    </div>`;
+
+  if(state.editandoReco){
+    return `
+      ${head}
+      <textarea id="reco-textarea" placeholder="O que este aluno precisa, o que funcionou bem, o que merece continuidade no próximo ano...">${a.recomendacao || ''}</textarea>
+      <div class="reco-actions">
+        <button class="reco-btn" onclick="cancelarEdicaoReco()">Cancelar</button>
+        <button class="reco-btn save" onclick="salvarReco(${a.id})">Salvar</button>
+      </div>`;
+  }
+
+  if(a.recomendacao){
+    return `
+      ${head}
+      <div style="font-size:13px; line-height:1.5; color:var(--ink);">${a.recomendacao}</div>
+      <div class="reco-actions">
+        <button class="reco-btn" onclick="editarReco()">Editar</button>
+      </div>`;
+  }
+
+  return `
+    ${head}
+    <div class="reco-empty">Nenhuma recomendação registrada ainda para este aluno.</div>
+    <div class="reco-actions">
+      <button class="reco-btn save" onclick="editarReco()">Adicionar recomendação</button>
+    </div>`;
+}
+
+function editarReco(){
+  state.editandoReco = true;
+  renderPerfilConteudo();
+  const ta = document.getElementById('reco-textarea');
+  if(ta){ ta.focus(); ta.selectionStart = ta.value.length; }
+}
+
+function cancelarEdicaoReco(){
+  state.editandoReco = false;
+  renderPerfilConteudo();
+}
+
+function salvarReco(id){
+  const a = ALUNOS.find(x => x.id === id);
+  const ta = document.getElementById('reco-textarea');
+  a.recomendacao = ta.value.trim();
+  state.editandoReco = false;
+  renderPerfilConteudo();
+  toast('Recomendação salva no perfil do aluno', 'check');
 }
 
 /* ============================ REGISTRO RÁPIDO ============================ */
