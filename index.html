@@ -300,6 +300,12 @@
   .login-form{ display:flex; flex-direction:column; gap:14px; }
   .login-link{ text-align:center; font-size:13px; color:var(--trust-dark); font-weight:700; cursor:pointer; text-decoration:none; }
 
+  .login-divider{
+    display:flex; align-items:center; gap:10px; margin:4px 0 -6px;
+    color:var(--muted); font-size:12px; font-weight:600;
+  }
+  .login-divider::before, .login-divider::after{ content:''; flex:1; height:1px; background:var(--line); }
+
   .empty-note{ text-align:center; color:var(--muted); font-size:13px; padding:18px 8px; }
 
   /* ---------- apresentação (onboarding) ---------- */
@@ -386,6 +392,50 @@
       </div>
       <button type="submit" class="btn btn-primary btn-block">Entrar</button>
       <a class="login-link" onclick="toast('Link de recuperação enviado','check')">Esqueci minha senha</a>
+    </form>
+    <div class="login-divider"><span>ainda não tem conta?</span></div>
+    <button class="btn btn-ghost btn-block" onclick="showScreen('cadastro')">Criar conta</button>
+  </section>
+
+  <!-- ============ CADASTRO ============ -->
+  <section class="screen" id="screen-cadastro">
+    <div class="topbar">
+      <button class="back" onclick="showScreen('login')" aria-label="Voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <div>
+        <h1>Criar conta</h1>
+        <div class="sub">Leva menos de um minuto</div>
+      </div>
+    </div>
+
+    <form class="login-form" onsubmit="doCadastro(event)" style="padding-top:4px;">
+      <div class="field" id="cad-field-nome">
+        <label for="cad-nome">Nome completo</label>
+        <input type="text" id="cad-nome" placeholder="Ana Lúcia Ferreira" autocomplete="name">
+        <div class="hint-error">Informe seu nome completo.</div>
+      </div>
+      <div class="field" id="cad-field-email">
+        <label for="cad-email">E-mail institucional</label>
+        <input type="email" id="cad-email" placeholder="ana.lucia@escola.edu.br" autocomplete="username">
+        <div class="hint-error">Informe um e-mail válido.</div>
+      </div>
+      <div class="field" id="cad-field-escola">
+        <label for="cad-escola">Escola <span class="opt">(opcional)</span></label>
+        <input type="text" id="cad-escola" placeholder="Nome da sua escola" autocomplete="organization">
+      </div>
+      <div class="field" id="cad-field-senha">
+        <label for="cad-senha">Senha</label>
+        <input type="password" id="cad-senha" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        <div class="hint-error">A senha deve ter pelo menos 6 caracteres.</div>
+      </div>
+      <div class="field" id="cad-field-confirmar">
+        <label for="cad-confirmar">Confirmar senha</label>
+        <input type="password" id="cad-confirmar" placeholder="Repita a senha" autocomplete="new-password">
+        <div class="hint-error">As senhas precisam ser iguais.</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Criar conta e entrar</button>
+      <a class="login-link" onclick="showScreen('login')">Já tenho conta — fazer login</a>
     </form>
   </section>
 
@@ -718,7 +768,7 @@ function showScreen(id){
   document.getElementById('screen-' + id).classList.add('active');
   document.getElementById('screen-' + id).scrollTop = 0;
   document.querySelectorAll('.navitem').forEach(n => n.classList.toggle('active', n.dataset.nav === id));
-  document.getElementById('bottomnav').style.display = (id === 'login' || id === 'apresentacao') ? 'none' : 'flex';
+  document.getElementById('bottomnav').style.display = (id === 'login' || id === 'cadastro' || id === 'apresentacao') ? 'none' : 'flex';
 
   if(id === 'dashboard') renderDashboard();
   if(id === 'alunos') renderListaAlunos();
@@ -740,6 +790,32 @@ function doLogin(e){
 function concluirApresentacao(){
   state.apresentacaoVista = true;
   showScreen('dashboard');
+}
+
+function doCadastro(e){
+  e.preventDefault();
+  const nome = document.getElementById('cad-nome');
+  const email = document.getElementById('cad-email');
+  const senha = document.getElementById('cad-senha');
+  const confirmar = document.getElementById('cad-confirmar');
+
+  const nomeOk = nome.value.trim().length > 0;
+  const emailOk = /\S+@\S+\.\S+/.test(email.value.trim());
+  const senhaOk = senha.value.length >= 6;
+  const confirmarOk = senhaOk && confirmar.value === senha.value;
+
+  document.getElementById('cad-field-nome').classList.toggle('error', !nomeOk);
+  document.getElementById('cad-field-email').classList.toggle('error', !emailOk);
+  document.getElementById('cad-field-senha').classList.toggle('error', !senhaOk);
+  document.getElementById('cad-field-confirmar').classList.toggle('error', !confirmarOk);
+
+  if(!nomeOk || !emailOk || !senhaOk || !confirmarOk) return;
+
+  toast('Conta criada com sucesso', 'check');
+  setTimeout(() => {
+    state.apresentacaoVista = false; // primeira vez no app: mostra a apresentação
+    showScreen('apresentacao');
+  }, 700);
 }
 
 /* ============================ DASHBOARD ============================ */
